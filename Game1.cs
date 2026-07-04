@@ -48,7 +48,7 @@ namespace Caelum_ReCore
         private int _finalHeight = 150;
 
         // --- ARTWORK PADDING ADJUSTMENT ---
-        private int _feetYOffset = 115;
+        private int _feetYOffset = 105;
 
         // Velocity-Based Physics Variables
         private float _velocityY = 0f;
