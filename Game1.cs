@@ -7,7 +7,8 @@ using Microsoft.Xna.Framework.Media;
 
 namespace Caelum_ReCore
 {
-    public enum GameTitle { Title, Playing, GameOver }
+    // Added LevelSelect to the state enum
+    public enum GameTitle { Title, LevelSelect, Playing }
 
     public class Platform
     {
@@ -28,7 +29,7 @@ namespace Caelum_ReCore
         private GameScreen _menuScreen = new GameScreen();
 
         private Texture2D _backgroundTexture, _textureIdle1, _textureIdle2, _textureJump, _textureRun1, _textureRun2, _activeTexture, _platformTexture;
-        private Texture2D _inventoryIcon, _bagIcon, _amuletTexture;
+        private Texture2D _inventoryIcon, _bagIcon, _amuletTexture, _backButton;
         private List<Platform> _platforms = new List<Platform>();
 
         private Vector2 _amuletPosition = new Vector2(1050, 270);
@@ -40,8 +41,12 @@ namespace Caelum_ReCore
         private float _recoveryTimer = 0f;
         private Dictionary<int, Texture2D> _hpTextures = new Dictionary<int, Texture2D>();
         private bool _isInventoryOpen = false;
-        private Rectangle _bagBounds = new Rectangle(1220, 10, 50, 50);
+
+        // UI Positions updated: Bag at 1150, Back button at 1220
+        private Rectangle _bagBounds = new Rectangle(1150, 10, 50, 50);
+        private Rectangle _backBounds = new Rectangle(1220, 10, 50, 50);
         private Rectangle _inventoryBounds = new Rectangle(440, 160, 400, 400);
+
         private Vector2 _playerPosition;
         private float _playerSpeed = 280f, _jumpForce = -700f, _velocityY = 0f, _gravity = 1600f, _fallStartY = 0f;
         private int _finalWidth = 110, _finalHeight = 150, _feetYOffset = 100;
@@ -86,6 +91,7 @@ namespace Caelum_ReCore
             _bagIcon = Content.Load<Texture2D>("InventoryIcon");
             _inventoryIcon = Content.Load<Texture2D>("InventorySlotsIcon");
             _amuletTexture = Content.Load<Texture2D>("RecoveryAmulet");
+            _backButton = Content.Load<Texture2D>("back"); // New back asset
 
             for (int i = 10; i <= 100; i += 10) _hpTextures[i] = Content.Load<Texture2D>("hp" + i);
             _activeTexture = _textureIdle1;
@@ -100,21 +106,29 @@ namespace Caelum_ReCore
 
         protected override void Update(GameTime gameTime)
         {
+            KeyboardState kState = Keyboard.GetState();
+            MouseState mouse = Mouse.GetState();
+
             if (_currentState == GameTitle.Title)
             {
                 SoundManager.PlayMenuMusic();
                 _menuScreen.Update(gameTime);
-                if (_menuScreen.StartGame)
-                {
-                    _currentState = GameTitle.Playing;
-                    SoundManager.PlayGameMusic();
-                }
+                if (_menuScreen.StartGame) _currentState = GameTitle.LevelSelect;
                 if (_menuScreen.ExitGame) Exit();
+            }
+            else if (_currentState == GameTitle.LevelSelect)
+            {
+                _menuScreen.UpdateLevelSelect(gameTime);
+                if (_menuScreen.Level1Selected) { _currentState = GameTitle.Playing; SoundManager.PlayGameMusic(); }
+                if (_menuScreen.BackToTitle) _currentState = GameTitle.Title;
             }
             else if (_currentState == GameTitle.Playing)
             {
                 UpdateGameplay(gameTime);
             }
+
+            _previousKeyboardState = kState;
+            _previousMouseState = mouse;
             base.Update(gameTime);
         }
 
@@ -124,9 +138,15 @@ namespace Caelum_ReCore
             MouseState mouse = Mouse.GetState();
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            if (kState.IsKeyDown(Keys.Escape)) _currentState = GameTitle.Title;
+            // Updated click logic for Inventory and Back button
+            if (mouse.LeftButton == ButtonState.Pressed && _previousMouseState.LeftButton == ButtonState.Released)
+            {
+                if (_bagBounds.Contains(mouse.Position)) { SoundManager.PlayButtonSound(); _isInventoryOpen = !_isInventoryOpen; }
+                else if (_backBounds.Contains(mouse.Position)) { SoundManager.PlayButtonSound(); _currentState = GameTitle.Title; }
+                else if (_isInventoryOpen && !_inventoryBounds.Contains(mouse.Position)) { _isInventoryOpen = false; }
+            }
 
-            // --- Movement and Sound Logic ---
+            // ... [Keep existing movement, physics, and animation logic below] ...
             bool isMoving = kState.IsKeyDown(Keys.A) || kState.IsKeyDown(Keys.D);
             if (isMoving && _isGrounded) SoundManager.PlayRunSound();
             else SoundManager.StopRunSound();
@@ -146,12 +166,6 @@ namespace Caelum_ReCore
                 _currentHp = Math.Min(100, _currentHp + 10);
                 _recoveryTimer = 0f;
                 UpdatePenalties();
-            }
-
-            if (mouse.LeftButton == ButtonState.Pressed && _previousMouseState.LeftButton == ButtonState.Released)
-            {
-                if (_bagBounds.Contains(mouse.Position)) { SoundManager.PlayButtonSound(); _isInventoryOpen = !_isInventoryOpen; }
-                else if (_isInventoryOpen && !_inventoryBounds.Contains(mouse.Position)) { _isInventoryOpen = false; }
             }
 
             if (kState.IsKeyDown(Keys.A)) { _playerPosition.X -= _playerSpeed * deltaTime; _spriteFlip = SpriteEffects.FlipHorizontally; }
@@ -229,9 +243,6 @@ namespace Caelum_ReCore
             _animationTimer += deltaTime;
             if (_animationTimer >= _animationDelay) { _animationTimer = 0f; _useAltFrame = !_useAltFrame; }
             _activeTexture = !_isGrounded ? _textureJump : (isMoving ? (_useAltFrame ? _textureRun2 : _textureRun1) : (_useAltFrame ? _textureIdle2 : _textureIdle1));
-
-            _previousKeyboardState = kState;
-            _previousMouseState = mouse;
         }
 
         private void UpdatePenalties()
@@ -246,31 +257,26 @@ namespace Caelum_ReCore
             GraphicsDevice.Clear(Color.Black);
             _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
 
-            if (_currentState == GameTitle.Title)
-            {
-                _menuScreen.Draw(_spriteBatch);
-            }
+            if (_currentState == GameTitle.Title) _menuScreen.Draw(_spriteBatch);
+            else if (_currentState == GameTitle.LevelSelect) _menuScreen.DrawLevelSelect(_spriteBatch);
             else if (_currentState == GameTitle.Playing)
             {
                 _spriteBatch.Draw(_backgroundTexture, new Rectangle(0, 0, 1280, 720), Color.White);
                 foreach (var platform in _platforms) _spriteBatch.Draw(platform.Texture, platform.Bounds, Color.White);
 
-                if (!_amuletCollected)
-                {
-                    _spriteBatch.Draw(_amuletTexture, new Rectangle((int)_amuletPosition.X, (int)(_amuletPosition.Y + (float)Math.Sin(_amuletFloatTimer * 3f) * 10f), 40, 40), Color.White);
-                }
+                if (!_amuletCollected) _spriteBatch.Draw(_amuletTexture, new Rectangle((int)_amuletPosition.X, (int)(_amuletPosition.Y + (float)Math.Sin(_amuletFloatTimer * 3f) * 10f), 40, 40), Color.White);
 
                 _spriteBatch.Draw(_activeTexture, new Rectangle((int)_playerPosition.X, (int)_playerPosition.Y, _finalWidth, _finalHeight), null, Color.White, 0f, Vector2.Zero, _spriteFlip, 0f);
                 if (_hpTextures.ContainsKey(_currentHp)) _spriteBatch.Draw(_hpTextures[_currentHp], new Vector2(20, 20), null, Color.White, 0f, Vector2.Zero, 0.1f, SpriteEffects.None, 0f);
+
+                // Draw UI Buttons
                 _spriteBatch.Draw(_bagIcon, _bagBounds, Color.White);
+                _spriteBatch.Draw(_backButton, _backBounds, Color.White);
 
                 if (_isInventoryOpen)
                 {
                     _spriteBatch.Draw(_inventoryIcon, _inventoryBounds, Color.White);
-                    if (_hasAmulet)
-                    {
-                        _spriteBatch.Draw(_amuletTexture, new Rectangle(570, 210, 50, 50), Color.White);
-                    }
+                    if (_hasAmulet) _spriteBatch.Draw(_amuletTexture, new Rectangle(570, 210, 50, 50), Color.White);
                 }
             }
             _spriteBatch.End();
