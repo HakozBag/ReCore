@@ -30,7 +30,6 @@ namespace Caelum_ReCore
         private Texture2D _inventoryIcon, _bagIcon, _amuletTexture;
         private List<Platform> _platforms = new List<Platform>();
 
-        // Amulet positioned on 4th platform
         private Vector2 _amuletPosition = new Vector2(1050, 270);
         private float _amuletFloatTimer = 0f;
         private bool _hasAmulet = false;
@@ -148,7 +147,6 @@ namespace Caelum_ReCore
                 else if (_isInventoryOpen && !_inventoryBounds.Contains(mouse.Position)) _isInventoryOpen = false;
             }
 
-            // --- Movement & Physics ---
             bool isMoving = false;
             if (kState.IsKeyDown(Keys.A)) { _playerPosition.X -= _playerSpeed * deltaTime; isMoving = true; _spriteFlip = SpriteEffects.FlipHorizontally; }
             if (kState.IsKeyDown(Keys.D)) { _playerPosition.X += _playerSpeed * deltaTime; isMoving = true; _spriteFlip = SpriteEffects.None; }
@@ -264,7 +262,8 @@ namespace Caelum_ReCore
                     _spriteBatch.Draw(_inventoryIcon, _inventoryBounds, Color.White);
                     if (_hasAmulet)
                     {
-                        _spriteBatch.Draw(_amuletTexture, new Rectangle(465, 185, 50, 50), Color.White);
+                        // Positioned in 2nd slot top-left as requested via image_eacea8.jpg
+                        _spriteBatch.Draw(_amuletTexture, new Rectangle(550, 185, 50, 50), Color.White);
                     }
                 }
             }
