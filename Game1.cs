@@ -124,7 +124,6 @@ namespace Caelum_ReCore
                 Rectangle amuletRect = new Rectangle((int)_amuletPosition.X, (int)(_amuletPosition.Y + (float)Math.Sin(_amuletFloatTimer * 3f) * 10f), 40, 40);
                 Rectangle playerRect = new Rectangle((int)_playerPosition.X, (int)_playerPosition.Y, _finalWidth, _finalHeight);
 
-                // Strict, precise intersection for small hitbox
                 if (playerRect.Intersects(amuletRect))
                 {
                     _amuletCollected = true;
@@ -262,8 +261,7 @@ namespace Caelum_ReCore
                     _spriteBatch.Draw(_inventoryIcon, _inventoryBounds, Color.White);
                     if (_hasAmulet)
                     {
-                        // Positioned in 2nd slot top-left as requested via image_eacea8.jpg
-                        _spriteBatch.Draw(_amuletTexture, new Rectangle(550, 185, 50, 50), Color.White);
+                        _spriteBatch.Draw(_amuletTexture, new Rectangle(570, 210, 50, 50), Color.White);
                     }
                 }
             }
