@@ -7,7 +7,6 @@ using Microsoft.Xna.Framework.Media;
 
 namespace Caelum_ReCore
 {
-    // Added LevelSelect to the state enum
     public enum GameTitle { Title, LevelSelect, Playing }
 
     public class Platform
@@ -28,6 +27,7 @@ namespace Caelum_ReCore
         private GameTitle _currentState = GameTitle.Title;
         private GameScreen _menuScreen = new GameScreen();
 
+        // ... [Existing Texture and Variable declarations remain the same] ...
         private Texture2D _backgroundTexture, _textureIdle1, _textureIdle2, _textureJump, _textureRun1, _textureRun2, _activeTexture, _platformTexture;
         private Texture2D _inventoryIcon, _bagIcon, _amuletTexture, _backButton;
         private List<Platform> _platforms = new List<Platform>();
@@ -42,7 +42,6 @@ namespace Caelum_ReCore
         private Dictionary<int, Texture2D> _hpTextures = new Dictionary<int, Texture2D>();
         private bool _isInventoryOpen = false;
 
-        // UI Positions updated: Bag at 1150, Back button at 1220
         private Rectangle _bagBounds = new Rectangle(1150, 10, 50, 50);
         private Rectangle _backBounds = new Rectangle(1220, 10, 50, 50);
         private Rectangle _inventoryBounds = new Rectangle(440, 160, 400, 400);
@@ -91,7 +90,7 @@ namespace Caelum_ReCore
             _bagIcon = Content.Load<Texture2D>("InventoryIcon");
             _inventoryIcon = Content.Load<Texture2D>("InventorySlotsIcon");
             _amuletTexture = Content.Load<Texture2D>("RecoveryAmulet");
-            _backButton = Content.Load<Texture2D>("back"); // New back asset
+            _backButton = Content.Load<Texture2D>("back");
 
             for (int i = 10; i <= 100; i += 10) _hpTextures[i] = Content.Load<Texture2D>("hp" + i);
             _activeTexture = _textureIdle1;
@@ -113,14 +112,25 @@ namespace Caelum_ReCore
             {
                 SoundManager.PlayMenuMusic();
                 _menuScreen.Update(gameTime);
-                if (_menuScreen.StartGame) _currentState = GameTitle.LevelSelect;
+                if (_menuScreen.StartGame)
+                {
+                    _currentState = GameTitle.LevelSelect;
+                }
                 if (_menuScreen.ExitGame) Exit();
             }
             else if (_currentState == GameTitle.LevelSelect)
             {
                 _menuScreen.UpdateLevelSelect(gameTime);
-                if (_menuScreen.Level1Selected) { _currentState = GameTitle.Playing; SoundManager.PlayGameMusic(); }
-                if (_menuScreen.BackToTitle) _currentState = GameTitle.Title;
+                if (_menuScreen.Level1Selected)
+                {
+                    _currentState = GameTitle.Playing;
+                    SoundManager.PlayGameMusic();
+                }
+                if (_menuScreen.BackToTitle)
+                {
+                    _currentState = GameTitle.Title;
+                    _menuScreen.ResetFlags(); // <--- CRITICAL FIX: Resets menu state
+                }
             }
             else if (_currentState == GameTitle.Playing)
             {
@@ -138,15 +148,19 @@ namespace Caelum_ReCore
             MouseState mouse = Mouse.GetState();
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            // Updated click logic for Inventory and Back button
             if (mouse.LeftButton == ButtonState.Pressed && _previousMouseState.LeftButton == ButtonState.Released)
             {
                 if (_bagBounds.Contains(mouse.Position)) { SoundManager.PlayButtonSound(); _isInventoryOpen = !_isInventoryOpen; }
-                else if (_backBounds.Contains(mouse.Position)) { SoundManager.PlayButtonSound(); _currentState = GameTitle.Title; }
+                else if (_backBounds.Contains(mouse.Position))
+                {
+                    SoundManager.PlayButtonSound();
+                    _currentState = GameTitle.Title;
+                    _menuScreen.ResetFlags(); // <--- CRITICAL FIX: Clean state transition
+                }
                 else if (_isInventoryOpen && !_inventoryBounds.Contains(mouse.Position)) { _isInventoryOpen = false; }
             }
 
-            // ... [Keep existing movement, physics, and animation logic below] ...
+            // ... [Keep existing movement and physics logic] ...
             bool isMoving = kState.IsKeyDown(Keys.A) || kState.IsKeyDown(Keys.D);
             if (isMoving && _isGrounded) SoundManager.PlayRunSound();
             else SoundManager.StopRunSound();
@@ -269,7 +283,6 @@ namespace Caelum_ReCore
                 _spriteBatch.Draw(_activeTexture, new Rectangle((int)_playerPosition.X, (int)_playerPosition.Y, _finalWidth, _finalHeight), null, Color.White, 0f, Vector2.Zero, _spriteFlip, 0f);
                 if (_hpTextures.ContainsKey(_currentHp)) _spriteBatch.Draw(_hpTextures[_currentHp], new Vector2(20, 20), null, Color.White, 0f, Vector2.Zero, 0.1f, SpriteEffects.None, 0f);
 
-                // Draw UI Buttons
                 _spriteBatch.Draw(_bagIcon, _bagBounds, Color.White);
                 _spriteBatch.Draw(_backButton, _backBounds, Color.White);
 
