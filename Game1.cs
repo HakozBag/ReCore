@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
 
 namespace Caelum_ReCore
 {
@@ -93,14 +94,21 @@ namespace Caelum_ReCore
             _platforms.Add(new Platform(400, 450, 200, 30, _platformTexture));
             _platforms.Add(new Platform(700, 380, 200, 30, _platformTexture));
             _platforms.Add(new Platform(1000, 310, 200, 30, _platformTexture));
+
+            SoundManager.LoadContent(Content);
         }
 
         protected override void Update(GameTime gameTime)
         {
             if (_currentState == GameTitle.Title)
             {
+                SoundManager.PlayMenuMusic();
                 _menuScreen.Update(gameTime);
-                if (_menuScreen.StartGame) _currentState = GameTitle.Playing;
+                if (_menuScreen.StartGame)
+                {
+                    _currentState = GameTitle.Playing;
+                    SoundManager.PlayGameMusic();
+                }
                 if (_menuScreen.ExitGame) Exit();
             }
             else if (_currentState == GameTitle.Playing)
@@ -261,7 +269,7 @@ namespace Caelum_ReCore
                     _spriteBatch.Draw(_inventoryIcon, _inventoryBounds, Color.White);
                     if (_hasAmulet)
                     {
-                        _spriteBatch.Draw(_amuletTexture, new Rectangle(570, 210, 50, 50), Color.White);
+                        _spriteBatch.Draw(_amuletTexture, new Rectangle(560, 195, 50, 50), Color.White);
                     }
                 }
             }
