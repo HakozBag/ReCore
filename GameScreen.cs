@@ -3,14 +3,16 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 
-namespace Caelum_ReCore // <-- CHANGED THIS TO MATCH Game1
+namespace Caelum_ReCore
 {
     public class GameScreen
     {
-        // ... (Keep the rest of your GameScreen.cs code exactly the same) ...
         private Texture2D _forestSky, _forestMoon, _forestMountain, _forestBack, _forestMid, _forestLong, _forestShort, _gameLogo, _playButton, _exitButton;
         private Rectangle _playRect, _exitRect;
         private float _skyX, _moonX, _mountainX, _backX, _midX, _longX, _shortX;
+
+        // Added to track mouse state to prevent sound spam
+        private MouseState _previousMouseState;
 
         public bool StartGame { get; private set; }
         public bool ExitGame { get; private set; }
@@ -44,11 +46,23 @@ namespace Caelum_ReCore // <-- CHANGED THIS TO MATCH Game1
             if (_backX <= -1280) _backX = 0; if (_midX <= -1280) _midX = 0; if (_longX <= -1280) _longX = 0; if (_shortX <= -1280) _shortX = 0;
 
             MouseState mouse = Mouse.GetState();
-            if (mouse.LeftButton == ButtonState.Pressed)
+
+            // Only trigger if the button was JUST pressed (transition from Released to Pressed)
+            if (mouse.LeftButton == ButtonState.Pressed && _previousMouseState.LeftButton == ButtonState.Released)
             {
-                if (_playRect.Contains(mouse.Position)) StartGame = true;
-                if (_exitRect.Contains(mouse.Position)) ExitGame = true;
+                if (_playRect.Contains(mouse.Position))
+                {
+                    SoundManager.PlayButtonSound(); // Play sound
+                    StartGame = true;
+                }
+                if (_exitRect.Contains(mouse.Position))
+                {
+                    SoundManager.PlayButtonSound(); // Play sound
+                    ExitGame = true;
+                }
             }
+
+            _previousMouseState = mouse;
         }
 
         public void Draw(SpriteBatch spriteBatch)
