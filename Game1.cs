@@ -269,7 +269,7 @@ namespace Caelum_ReCore
                     _spriteBatch.Draw(_inventoryIcon, _inventoryBounds, Color.White);
                     if (_hasAmulet)
                     {
-                        _spriteBatch.Draw(_amuletTexture, new Rectangle(560, 195, 50, 50), Color.White);
+                        _spriteBatch.Draw(_amuletTexture, new Rectangle(570, 210, 50, 50), Color.White);
                     }
                 }
             }
