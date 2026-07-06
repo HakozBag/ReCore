@@ -1,31 +1,46 @@
 using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Media;
 
 namespace Caelum_ReCore
 {
     public static class SoundManager
     {
-        public static Song MenuMusic;
+        public static SoundEffectInstance MenuMusicInstance;
         public static Song GameMusic;
 
         public static void LoadContent(ContentManager content)
         {
-            MenuMusic = content.Load<Song>("MenuBG");
-            GameMusic = content.Load<Song>("BGM");
+            // Load wav file correctly as SoundEffect
+            SoundEffect menuSound = content.Load<SoundEffect>("MenuBG");
+            MenuMusicInstance = menuSound.CreateInstance();
+            MenuMusicInstance.IsLooped = true;
+
+            try
+            {
+                GameMusic = content.Load<Song>("BGM");
+            }
+            catch
+            {
+                GameMusic = null; // Prevents crash if file is missing
+            }
         }
 
         public static void PlayMenuMusic()
         {
-            if (MediaPlayer.State != MediaState.Playing || MediaPlayer.Queue.ActiveSong != MenuMusic)
+            if (MenuMusicInstance.State != SoundState.Playing)
             {
-                MediaPlayer.IsRepeating = true;
-                MediaPlayer.Play(MenuMusic);
+                MediaPlayer.Stop();
+                MenuMusicInstance.Play();
             }
         }
 
         public static void PlayGameMusic()
         {
-            if (MediaPlayer.State != MediaState.Playing || MediaPlayer.Queue.ActiveSong != GameMusic)
+            if (MenuMusicInstance.State == SoundState.Playing)
+                MenuMusicInstance.Stop();
+
+            if (GameMusic != null && (MediaPlayer.State != MediaState.Playing || MediaPlayer.Queue.ActiveSong != GameMusic))
             {
                 MediaPlayer.IsRepeating = true;
                 MediaPlayer.Play(GameMusic);
