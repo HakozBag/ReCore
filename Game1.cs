@@ -126,17 +126,17 @@ namespace Caelum_ReCore
 
             if (kState.IsKeyDown(Keys.Escape)) _currentState = GameTitle.Title;
 
+            // --- Movement and Sound Logic ---
+            bool isMoving = kState.IsKeyDown(Keys.A) || kState.IsKeyDown(Keys.D);
+            if (isMoving && _isGrounded) SoundManager.PlayRunSound();
+            else SoundManager.StopRunSound();
+
             _amuletFloatTimer += deltaTime;
             if (!_amuletCollected)
             {
                 Rectangle amuletRect = new Rectangle((int)_amuletPosition.X, (int)(_amuletPosition.Y + (float)Math.Sin(_amuletFloatTimer * 3f) * 10f), 40, 40);
                 Rectangle playerRect = new Rectangle((int)_playerPosition.X, (int)_playerPosition.Y, _finalWidth, _finalHeight);
-
-                if (playerRect.Intersects(amuletRect))
-                {
-                    _amuletCollected = true;
-                    _hasAmulet = true;
-                }
+                if (playerRect.Intersects(amuletRect)) { _amuletCollected = true; _hasAmulet = true; }
             }
 
             _recoveryTimer += deltaTime;
@@ -150,13 +150,12 @@ namespace Caelum_ReCore
 
             if (mouse.LeftButton == ButtonState.Pressed && _previousMouseState.LeftButton == ButtonState.Released)
             {
-                if (_bagBounds.Contains(mouse.Position)) _isInventoryOpen = !_isInventoryOpen;
-                else if (_isInventoryOpen && !_inventoryBounds.Contains(mouse.Position)) _isInventoryOpen = false;
+                if (_bagBounds.Contains(mouse.Position)) { SoundManager.PlayButtonSound(); _isInventoryOpen = !_isInventoryOpen; }
+                else if (_isInventoryOpen && !_inventoryBounds.Contains(mouse.Position)) { _isInventoryOpen = false; }
             }
 
-            bool isMoving = false;
-            if (kState.IsKeyDown(Keys.A)) { _playerPosition.X -= _playerSpeed * deltaTime; isMoving = true; _spriteFlip = SpriteEffects.FlipHorizontally; }
-            if (kState.IsKeyDown(Keys.D)) { _playerPosition.X += _playerSpeed * deltaTime; isMoving = true; _spriteFlip = SpriteEffects.None; }
+            if (kState.IsKeyDown(Keys.A)) { _playerPosition.X -= _playerSpeed * deltaTime; _spriteFlip = SpriteEffects.FlipHorizontally; }
+            if (kState.IsKeyDown(Keys.D)) { _playerPosition.X += _playerSpeed * deltaTime; _spriteFlip = SpriteEffects.None; }
 
             if (kState.IsKeyDown(Keys.S) && _currentPlatform != null)
             {
@@ -168,6 +167,7 @@ namespace Caelum_ReCore
 
             if (kState.IsKeyDown(Keys.Space) && _previousKeyboardState.IsKeyUp(Keys.Space) && _isGrounded)
             {
+                SoundManager.PlayJumpSound();
                 _velocityY = _jumpForce; _isGrounded = false; _currentPlatform = null; _fallStartY = _playerPosition.Y;
             }
 
@@ -273,7 +273,6 @@ namespace Caelum_ReCore
                     }
                 }
             }
-
             _spriteBatch.End();
             base.Draw(gameTime);
         }
