@@ -9,22 +9,24 @@ namespace Caelum_ReCore
     {
         private Texture2D _forestSky, _forestMoon, _forestMountain, _forestBack, _forestMid, _forestLong, _forestShort, _gameLogo;
         private Texture2D _playButton, _exitButton, _level1Btn, _level2Btn, _level3Btn, _creditsBtn, _backBtn;
-
         private Rectangle _playRect, _exitRect, _lvl1Rect, _lvl2Rect, _lvl3Rect, _creditsRect, _backRect;
         private float _skyX, _moonX, _mountainX, _backX, _midX, _longX, _shortX;
-
         private MouseState _previousMouseState;
 
-        // State Flags
-        public bool StartGame { get; private set; } // Triggers transition to LevelSelect
+        public bool StartGame { get; private set; }
         public bool ExitGame { get; private set; }
         public bool Level1Selected { get; private set; }
         public bool BackToTitle { get; private set; }
-        public bool IsInLevelSelect { get; private set; }
+
+        public void ResetFlags()
+        {
+            StartGame = false;
+            BackToTitle = false;
+            Level1Selected = false;
+        }
 
         public void LoadContent(ContentManager content, GraphicsDevice graphicsDevice)
         {
-            // Backgrounds
             _forestSky = content.Load<Texture2D>("forest_sky");
             _forestMoon = content.Load<Texture2D>("forest_moon");
             _forestMountain = content.Load<Texture2D>("forest_mountain");
@@ -33,8 +35,6 @@ namespace Caelum_ReCore
             _forestLong = content.Load<Texture2D>("forest_long");
             _forestShort = content.Load<Texture2D>("forest_short");
             _gameLogo = content.Load<Texture2D>("Game_Logo");
-
-            // Buttons
             _playButton = content.Load<Texture2D>("Play");
             _exitButton = content.Load<Texture2D>("Exit");
             _level1Btn = content.Load<Texture2D>("level1");
@@ -51,22 +51,19 @@ namespace Caelum_ReCore
             _playRect = new Rectangle(centerX, 280, w, h);
             _creditsRect = new Rectangle(centerX, 360, w, h);
             _exitRect = new Rectangle(centerX, 440, w, h);
-
-            // Level Select Rectangles (Stacked Vertically)
             _lvl1Rect = new Rectangle(centerX, 150, w, h);
             _lvl2Rect = new Rectangle(centerX, 230, w, h);
             _lvl3Rect = new Rectangle(centerX, 310, w, h);
-            _backRect = new Rectangle(20, 20, 80, 80); // Top Left Back Button
+            _backRect = new Rectangle(20, 20, 80, 80);
         }
 
         public void Update(GameTime gameTime)
         {
             UpdateBackgrounds(gameTime);
             MouseState mouse = Mouse.GetState();
-
             if (mouse.LeftButton == ButtonState.Pressed && _previousMouseState.LeftButton == ButtonState.Released)
             {
-                if (_playRect.Contains(mouse.Position)) { SoundManager.PlayButtonSound(); StartGame = true; IsInLevelSelect = true; }
+                if (_playRect.Contains(mouse.Position)) { SoundManager.PlayButtonSound(); StartGame = true; }
                 if (_exitRect.Contains(mouse.Position)) { SoundManager.PlayButtonSound(); ExitGame = true; }
             }
             _previousMouseState = mouse;
@@ -76,11 +73,10 @@ namespace Caelum_ReCore
         {
             UpdateBackgrounds(gameTime);
             MouseState mouse = Mouse.GetState();
-
             if (mouse.LeftButton == ButtonState.Pressed && _previousMouseState.LeftButton == ButtonState.Released)
             {
                 if (_lvl1Rect.Contains(mouse.Position)) { SoundManager.PlayButtonSound(); Level1Selected = true; }
-                if (_backRect.Contains(mouse.Position)) { SoundManager.PlayButtonSound(); BackToTitle = true; IsInLevelSelect = false; StartGame = false; }
+                if (_backRect.Contains(mouse.Position)) { SoundManager.PlayButtonSound(); BackToTitle = true; }
             }
             _previousMouseState = mouse;
         }
