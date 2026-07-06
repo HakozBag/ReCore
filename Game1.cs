@@ -6,7 +6,6 @@ using Microsoft.Xna.Framework.Input;
 
 namespace Caelum_ReCore
 {
-    // Keeping your defined state
     public enum GameTitle { Title, Playing, GameOver }
 
     public class Platform
@@ -24,15 +23,19 @@ namespace Caelum_ReCore
     {
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
-
-        // Game State
         private GameTitle _currentState = GameTitle.Title;
         private GameScreen _menuScreen = new GameScreen();
 
-        // Gameplay assets and variables
         private Texture2D _backgroundTexture, _textureIdle1, _textureIdle2, _textureJump, _textureRun1, _textureRun2, _activeTexture, _platformTexture;
-        private Texture2D _inventoryIcon, _bagIcon;
+        private Texture2D _inventoryIcon, _bagIcon, _amuletTexture;
         private List<Platform> _platforms = new List<Platform>();
+
+        // Amulet positioned on 4th platform
+        private Vector2 _amuletPosition = new Vector2(1050, 270);
+        private float _amuletFloatTimer = 0f;
+        private bool _hasAmulet = false;
+        private bool _amuletCollected = false;
+
         private int _currentHp = 100;
         private float _recoveryTimer = 0f;
         private Dictionary<int, Texture2D> _hpTextures = new Dictionary<int, Texture2D>();
@@ -73,7 +76,6 @@ namespace Caelum_ReCore
             _spriteBatch = new SpriteBatch(GraphicsDevice);
             _menuScreen.LoadContent(Content, GraphicsDevice);
 
-            // Load Gameplay Assets
             _backgroundTexture = Content.Load<Texture2D>("JUNGLE");
             _textureIdle1 = Content.Load<Texture2D>("Ide1");
             _textureIdle2 = Content.Load<Texture2D>("Idle2");
@@ -83,6 +85,7 @@ namespace Caelum_ReCore
             _platformTexture = Content.Load<Texture2D>("RIGHTplatform1");
             _bagIcon = Content.Load<Texture2D>("InventoryIcon");
             _inventoryIcon = Content.Load<Texture2D>("InventorySlotsIcon");
+            _amuletTexture = Content.Load<Texture2D>("RecoveryAmulet");
 
             for (int i = 10; i <= 100; i += 10) _hpTextures[i] = Content.Load<Texture2D>("hp" + i);
             _activeTexture = _textureIdle1;
@@ -116,8 +119,23 @@ namespace Caelum_ReCore
 
             if (kState.IsKeyDown(Keys.Escape)) _currentState = GameTitle.Title;
 
+            _amuletFloatTimer += deltaTime;
+            if (!_amuletCollected)
+            {
+                Rectangle amuletRect = new Rectangle((int)_amuletPosition.X, (int)(_amuletPosition.Y + (float)Math.Sin(_amuletFloatTimer * 3f) * 10f), 40, 40);
+                Rectangle playerRect = new Rectangle((int)_playerPosition.X, (int)_playerPosition.Y, _finalWidth, _finalHeight);
+
+                // Strict, precise intersection for small hitbox
+                if (playerRect.Intersects(amuletRect))
+                {
+                    _amuletCollected = true;
+                    _hasAmulet = true;
+                }
+            }
+
             _recoveryTimer += deltaTime;
-            if (_recoveryTimer >= 20f && _currentHp < 100)
+            float recoveryThreshold = _hasAmulet ? 5f : 20f;
+            if (_recoveryTimer >= recoveryThreshold && _currentHp < 100)
             {
                 _currentHp = Math.Min(100, _currentHp + 10);
                 _recoveryTimer = 0f;
@@ -130,19 +148,30 @@ namespace Caelum_ReCore
                 else if (_isInventoryOpen && !_inventoryBounds.Contains(mouse.Position)) _isInventoryOpen = false;
             }
 
+            // --- Movement & Physics ---
             bool isMoving = false;
             if (kState.IsKeyDown(Keys.A)) { _playerPosition.X -= _playerSpeed * deltaTime; isMoving = true; _spriteFlip = SpriteEffects.FlipHorizontally; }
             if (kState.IsKeyDown(Keys.D)) { _playerPosition.X += _playerSpeed * deltaTime; isMoving = true; _spriteFlip = SpriteEffects.None; }
+
+            if (kState.IsKeyDown(Keys.S) && _currentPlatform != null)
+            {
+                _ignoredPlatform = _currentPlatform;
+                _isGrounded = false;
+                _currentPlatform = null;
+                _velocityY = 100f;
+            }
 
             if (kState.IsKeyDown(Keys.Space) && _previousKeyboardState.IsKeyUp(Keys.Space) && _isGrounded)
             {
                 _velocityY = _jumpForce; _isGrounded = false; _currentPlatform = null; _fallStartY = _playerPosition.Y;
             }
 
-            if (!_isGrounded) _velocityY += _gravity * deltaTime;
+            _velocityY += _gravity * deltaTime;
             _playerPosition.Y += _velocityY * deltaTime;
 
             Rectangle playerFeet = new Rectangle((int)_playerPosition.X + 35, (int)_playerPosition.Y + _feetYOffset, 40, 15);
+            bool hitAnything = false;
+
             if (_velocityY >= 0f)
             {
                 foreach (var platform in _platforms)
@@ -155,14 +184,23 @@ namespace Caelum_ReCore
                             float fallDistance = _playerPosition.Y - _fallStartY;
                             if (fallDistance > 150f)
                             {
-                                _currentHp = Math.Max(10, _currentHp - 10);
+                                int damage = ((int)(fallDistance / 150f)) * 10;
+                                _currentHp = Math.Max(10, _currentHp - damage);
                                 _recoveryTimer = 0f;
                                 UpdatePenalties();
                             }
                         }
                         _velocityY = 0f; _isGrounded = true; _currentPlatform = platform; _playerPosition.Y = platform.Bounds.Top - _feetYOffset;
-                        _ignoredPlatform = null; break;
+                        _ignoredPlatform = null; hitAnything = true; break;
                     }
+                }
+            }
+
+            if (!hitAnything && _currentPlatform != null)
+            {
+                if (_playerPosition.X + 35 > _currentPlatform.Bounds.Right || _playerPosition.X + 75 < _currentPlatform.Bounds.Left)
+                {
+                    _isGrounded = false; _currentPlatform = null; _fallStartY = _playerPosition.Y;
                 }
             }
 
@@ -173,7 +211,8 @@ namespace Caelum_ReCore
                     float fallDistance = _playerPosition.Y - _fallStartY;
                     if (fallDistance > 150f)
                     {
-                        _currentHp = Math.Max(10, _currentHp - 10);
+                        int damage = ((int)(fallDistance / 150f)) * 10;
+                        _currentHp = Math.Max(10, _currentHp - damage);
                         _recoveryTimer = 0f;
                         UpdatePenalties();
                     }
@@ -210,10 +249,24 @@ namespace Caelum_ReCore
             {
                 _spriteBatch.Draw(_backgroundTexture, new Rectangle(0, 0, 1280, 720), Color.White);
                 foreach (var platform in _platforms) _spriteBatch.Draw(platform.Texture, platform.Bounds, Color.White);
+
+                if (!_amuletCollected)
+                {
+                    _spriteBatch.Draw(_amuletTexture, new Rectangle((int)_amuletPosition.X, (int)(_amuletPosition.Y + (float)Math.Sin(_amuletFloatTimer * 3f) * 10f), 40, 40), Color.White);
+                }
+
                 _spriteBatch.Draw(_activeTexture, new Rectangle((int)_playerPosition.X, (int)_playerPosition.Y, _finalWidth, _finalHeight), null, Color.White, 0f, Vector2.Zero, _spriteFlip, 0f);
                 if (_hpTextures.ContainsKey(_currentHp)) _spriteBatch.Draw(_hpTextures[_currentHp], new Vector2(20, 20), null, Color.White, 0f, Vector2.Zero, 0.1f, SpriteEffects.None, 0f);
                 _spriteBatch.Draw(_bagIcon, _bagBounds, Color.White);
-                if (_isInventoryOpen) _spriteBatch.Draw(_inventoryIcon, _inventoryBounds, Color.White);
+
+                if (_isInventoryOpen)
+                {
+                    _spriteBatch.Draw(_inventoryIcon, _inventoryBounds, Color.White);
+                    if (_hasAmulet)
+                    {
+                        _spriteBatch.Draw(_amuletTexture, new Rectangle(465, 185, 50, 50), Color.White);
+                    }
+                }
             }
 
             _spriteBatch.End();
