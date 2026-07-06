@@ -6,6 +6,9 @@ using Microsoft.Xna.Framework.Input;
 
 namespace Caelum_ReCore
 {
+    // Keeping your defined state
+    public enum GameTitle { Title, Playing, GameOver }
+
     public class Platform
     {
         public Rectangle Bounds;
@@ -22,18 +25,20 @@ namespace Caelum_ReCore
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
 
+        // Game State
+        private GameTitle _currentState = GameTitle.Title;
+        private GameScreen _menuScreen = new GameScreen();
+
+        // Gameplay assets and variables
         private Texture2D _backgroundTexture, _textureIdle1, _textureIdle2, _textureJump, _textureRun1, _textureRun2, _activeTexture, _platformTexture;
         private Texture2D _inventoryIcon, _bagIcon;
         private List<Platform> _platforms = new List<Platform>();
-
         private int _currentHp = 100;
         private float _recoveryTimer = 0f;
         private Dictionary<int, Texture2D> _hpTextures = new Dictionary<int, Texture2D>();
-
         private bool _isInventoryOpen = false;
         private Rectangle _bagBounds = new Rectangle(1220, 10, 50, 50);
         private Rectangle _inventoryBounds = new Rectangle(440, 160, 400, 400);
-
         private Vector2 _playerPosition;
         private float _playerSpeed = 280f, _jumpForce = -700f, _velocityY = 0f, _gravity = 1600f, _fallStartY = 0f;
         private int _finalWidth = 110, _finalHeight = 150, _feetYOffset = 100;
@@ -66,6 +71,9 @@ namespace Caelum_ReCore
         protected override void LoadContent()
         {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
+            _menuScreen.LoadContent(Content, GraphicsDevice);
+
+            // Load Gameplay Assets
             _backgroundTexture = Content.Load<Texture2D>("JUNGLE");
             _textureIdle1 = Content.Load<Texture2D>("Ide1");
             _textureIdle2 = Content.Load<Texture2D>("Idle2");
@@ -73,7 +81,6 @@ namespace Caelum_ReCore
             _textureRun1 = Content.Load<Texture2D>("Run1");
             _textureRun2 = Content.Load<Texture2D>("Run2");
             _platformTexture = Content.Load<Texture2D>("RIGHTplatform1");
-
             _bagIcon = Content.Load<Texture2D>("InventoryIcon");
             _inventoryIcon = Content.Load<Texture2D>("InventorySlotsIcon");
 
@@ -86,20 +93,28 @@ namespace Caelum_ReCore
             _platforms.Add(new Platform(1000, 310, 200, 30, _platformTexture));
         }
 
-        private void UpdatePenalties()
+        protected override void Update(GameTime gameTime)
         {
-            int lostSegments = (100 - _currentHp) / 10;
-            _playerSpeed = Math.Max(100f, 280f - (lostSegments * 15f));
-            _jumpForce = Math.Min(-300f, -700f + (lostSegments * 40f));
+            if (_currentState == GameTitle.Title)
+            {
+                _menuScreen.Update(gameTime);
+                if (_menuScreen.StartGame) _currentState = GameTitle.Playing;
+                if (_menuScreen.ExitGame) Exit();
+            }
+            else if (_currentState == GameTitle.Playing)
+            {
+                UpdateGameplay(gameTime);
+            }
+            base.Update(gameTime);
         }
 
-        protected override void Update(GameTime gameTime)
+        private void UpdateGameplay(GameTime gameTime)
         {
             KeyboardState kState = Keyboard.GetState();
             MouseState mouse = Mouse.GetState();
             float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            if (kState.IsKeyDown(Keys.Escape)) Exit();
+            if (kState.IsKeyDown(Keys.Escape)) _currentState = GameTitle.Title;
 
             _recoveryTimer += deltaTime;
             if (_recoveryTimer >= 20f && _currentHp < 100)
@@ -128,7 +143,6 @@ namespace Caelum_ReCore
             _playerPosition.Y += _velocityY * deltaTime;
 
             Rectangle playerFeet = new Rectangle((int)_playerPosition.X + 35, (int)_playerPosition.Y + _feetYOffset, 40, 15);
-
             if (_velocityY >= 0f)
             {
                 foreach (var platform in _platforms)
@@ -174,23 +188,33 @@ namespace Caelum_ReCore
 
             _previousKeyboardState = kState;
             _previousMouseState = mouse;
-            base.Update(gameTime);
+        }
+
+        private void UpdatePenalties()
+        {
+            int lostSegments = (100 - _currentHp) / 10;
+            _playerSpeed = Math.Max(100f, 280f - (lostSegments * 15f));
+            _jumpForce = Math.Min(-300f, -700f + (lostSegments * 40f));
         }
 
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.Black);
             _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
-            _spriteBatch.Draw(_backgroundTexture, new Rectangle(0, 0, 1280, 720), Color.White);
-            foreach (var platform in _platforms) _spriteBatch.Draw(platform.Texture, platform.Bounds, Color.White);
-            _spriteBatch.Draw(_activeTexture, new Rectangle((int)_playerPosition.X, (int)_playerPosition.Y, _finalWidth, _finalHeight), null, Color.White, 0f, Vector2.Zero, _spriteFlip, 0f);
 
-            // Scaled HP display at top left - now half the previous size (0.1f)
-            if (_hpTextures.ContainsKey(_currentHp))
-                _spriteBatch.Draw(_hpTextures[_currentHp], new Vector2(20, 20), null, Color.White, 0f, Vector2.Zero, 0.1f, SpriteEffects.None, 0f);
-
-            _spriteBatch.Draw(_bagIcon, _bagBounds, Color.White);
-            if (_isInventoryOpen) _spriteBatch.Draw(_inventoryIcon, _inventoryBounds, Color.White);
+            if (_currentState == GameTitle.Title)
+            {
+                _menuScreen.Draw(_spriteBatch);
+            }
+            else if (_currentState == GameTitle.Playing)
+            {
+                _spriteBatch.Draw(_backgroundTexture, new Rectangle(0, 0, 1280, 720), Color.White);
+                foreach (var platform in _platforms) _spriteBatch.Draw(platform.Texture, platform.Bounds, Color.White);
+                _spriteBatch.Draw(_activeTexture, new Rectangle((int)_playerPosition.X, (int)_playerPosition.Y, _finalWidth, _finalHeight), null, Color.White, 0f, Vector2.Zero, _spriteFlip, 0f);
+                if (_hpTextures.ContainsKey(_currentHp)) _spriteBatch.Draw(_hpTextures[_currentHp], new Vector2(20, 20), null, Color.White, 0f, Vector2.Zero, 0.1f, SpriteEffects.None, 0f);
+                _spriteBatch.Draw(_bagIcon, _bagBounds, Color.White);
+                if (_isInventoryOpen) _spriteBatch.Draw(_inventoryIcon, _inventoryBounds, Color.White);
+            }
 
             _spriteBatch.End();
             base.Draw(gameTime);
