@@ -33,7 +33,7 @@ namespace Caelum_ReCore
 
         public Projectile(Vector2 startPos, Vector2 target, Texture2D t1, Texture2D t2, Texture2D t3)
         {
-            // Spawn from the center of the player (adjust these offsets to fit your sprite)
+            // Spawn from the center of the player
             Position = startPos + new Vector2(55, 75);
 
             Vector2 direction = target - Position;
@@ -181,7 +181,12 @@ namespace Caelum_ReCore
                 if (_bagBounds.Contains(mouse.Position)) { SoundManager.PlayButtonSound(); _isInventoryOpen = !_isInventoryOpen; }
                 else if (_backBounds.Contains(mouse.Position)) { SoundManager.PlayButtonSound(); _currentState = GameTitle.Title; _menuScreen.ResetFlags(); }
                 else if (_isInventoryOpen && !_inventoryBounds.Contains(mouse.Position)) _isInventoryOpen = false;
-                else _projectiles.Add(new Projectile(_playerPosition, new Vector2(mouse.X, mouse.Y), _proj1, _proj2, _proj3));
+                else
+                {
+                    // Trigger sound and projectile
+                    SoundManager.PlayFireballSound();
+                    _projectiles.Add(new Projectile(_playerPosition, new Vector2(mouse.X, mouse.Y), _proj1, _proj2, _proj3));
+                }
             }
 
             for (int i = _projectiles.Count - 1; i >= 0; i--)
@@ -190,6 +195,7 @@ namespace Caelum_ReCore
                 if (!_projectiles[i].IsActive) _projectiles.RemoveAt(i);
             }
 
+            // ... (rest of your physics/movement code remains unchanged) ...
             bool isMoving = kState.IsKeyDown(Keys.A) || kState.IsKeyDown(Keys.D);
             if (isMoving && _isGrounded) SoundManager.PlayRunSound(); else SoundManager.StopRunSound();
 
@@ -263,7 +269,6 @@ namespace Caelum_ReCore
                 foreach (var p in _projectiles)
                 {
                     Texture2D tex = p.Textures[p.CurrentFrame];
-
                     _spriteBatch.Draw(tex, p.Position, null, Color.White, p.Angle,
                                       new Vector2(tex.Width / 2, tex.Height / 2), 0.05f, SpriteEffects.None, 0f);
                 }
